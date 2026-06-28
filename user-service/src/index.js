@@ -12,6 +12,7 @@ const app = express();
 
 // console.log({ corsMiddleware, errorhandler, reqLogger });
 //middlwares
+
 app.use(helmet());
 app.use(corsMiddleware);
 app.use(reqLogger);
