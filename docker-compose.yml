@@ -1,0 +1,53 @@
+name: irctc-backend
+# yaml file is basicaally a congiguration file which is used to define and run multi-container docker applications. It allows you to define services, networks, and volumes in a single file, making it easier to manage and deploy complex applications.
+
+#  volumes are used to persist data when we cmd docker-compose down, so that data is not lost when 
+# the container is stopped .  ALthough, if we use docker-compose down -v, then the data will be lost as it will remove the volumes as well.
+
+
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+       POSTGRES_USER: admin
+       POSTGRES_PASSWORD: irctcpass
+       POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8081:80"
+    depends_on:
+      - postgres
+    
+   
+
+  redis:
+    image: redis/redis-stack:latest
+    container_name: redis
+    restart: always
+    environment:
+      - REDIS_ARGS="--requirepass irctcpass"
+    ports:
+      - "6379:6379" # redis server port
+      - "8001:8001" # redis web ui port
+    volumes:
+      - redis_data:/data
+    
+
+# global fields for all services
+volumes:
+  postgres_data:
+  redis_data:
