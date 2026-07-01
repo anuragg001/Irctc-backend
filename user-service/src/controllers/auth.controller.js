@@ -1,6 +1,6 @@
 // Auth controller is just for handling incoming request related to authentication and route it 
 // to correct bussiness logic layer and send the response back to the client
-const { BadRequestError } = require("../utils/error");
+const { BadRequestError, UnauthorizedError } = require("../utils/error");
 const asyncHandler = require("../utils/asyncHandler");
 const {config} = require("../config");
 const authService = require("../services/auth.service");
@@ -30,7 +30,7 @@ exports.sendOTP = asyncHandler(async(req,res)=>{
     // now store the otpSessionId in the cookie
     res.cookie('otp_session',otpSessionId,{
         httpOnly:true,
-        secure: true,
+        secure: config.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: config.OTP_TTL * 1000, // convert to milliseconds
     }).status(200).json({
@@ -79,7 +79,7 @@ exports.login = asyncHandler(async(req,res)=>{
     //now store the accessToken and refreshToken in the cookie
     res.cookie('accessToken',accessToken, {
          httpOnly:true,
-         secure: true,
+         secure: config.NODE_ENV === 'production',
          sameSite: 'strict',  // single dommain can access the cookie 
          maxAge: config.ACCESS_TOKEN_EXP_SEC * 1000, // convert to milliseconds
           
@@ -87,12 +87,50 @@ exports.login = asyncHandler(async(req,res)=>{
 
     res.cookie('refreshToken',refreshToken,{
         httpOnly:true,
-        secure: true,
+        secure: config.NODE_ENV === 'production',
         sameSite: 'strict',  // single dommain can access the cookie 
         maxAge: config.REFRESH_TOKEN_EXP_SEC * 1000, // convert to milliseconds 
-    }).status(200).json({
+    })
+    res.status(200).json({
         success:true,
         message:'User logged in successfully',
         loggedInUser
     })
+})
+
+// generate new pair of access and refresh token using the refresh token
+exports.rotateRefreshToken  = asyncHandler(async(req,res)=>{
+    //fetch refresh token from the cookie
+    // console.log('cookies received:', req.cookies);
+    const refreshToken = req.cookies.refreshToken;
+
+    //check if we have recived the refresh token
+    if(!refreshToken){
+        throw new UnauthorizedError('Refresh token is required',"Login again");
+    }
+    const deviceId = getDeviceFingerprint(req);
+
+    //now pass the control to the auth serice to generate new pair of access
+    // and refresh token
+    const {newAccessToken, newRefreshToken} = await authService.rotateRefreshToken(refreshToken,deviceId);
+
+    //now store the newly generated accessToken and refreshToken in the cookie
+    res.cookie('accessToken',newAccessToken,{
+        httpOnly:true,
+        secure: config.NODE_ENV === 'production',
+        sameSite: 'strict',  // single dommain can access the cookie 
+        maxAge: config.ACCESS_TOKEN_EXP_SEC * 1000, // convert to milliseconds 
+    })
+
+    res.cookie('refreshToken',newRefreshToken,{
+        httpOnly:true,
+        secure: config.NODE_ENV === 'production',
+        sameSite: 'strict',  // single dommain can access the cookie
+        maxAge: config.REFRESH_TOKEN_EXP_SEC * 1000, // convert to milliseconds
+    })
+    res.status(200).json({
+        success:true,
+        message:'Token rotated successfully'
+    })
+
 })
