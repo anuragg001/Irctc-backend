@@ -31,4 +31,22 @@ async function sendOtpEmail(email, otp) {
     await transporter.sendMail(msg);
 }
 
-module.exports = { sendOtpEmail };
+async function verifyOtpEmail(email, firstName) {
+    const msg = {
+        from: config.MAIL_USER,
+        to: email,
+        subject: 'Welcome to IRCTC — Account Created Successfully',
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 420px; margin: auto; padding: 20px; border: 1px solid #e5e5e5; border-radius: 10px; background: #ffffff;">
+                <h2 style="color: #1a1a1a;">Account Created 🎉</h2>
+                <p style="color: #333;">Hi <strong>${firstName}</strong>,</p>
+                <p style="color: #333;">Your IRCTC account has been successfully created. You can now log in and start booking tickets.</p>
+                <p style="color: #999; font-size: 12px;">If you didn't create this account, please contact support immediately.</p>
+            </div>
+        `
+    };
+
+    await transporter.sendMail(msg);
+}
+
+module.exports = { sendOtpEmail, verifyOtpEmail };
